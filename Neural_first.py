@@ -96,7 +96,7 @@ def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 def dense(a_in, W, b):
-    # Vectorized implementation of each layer
+    # Vectorized implementation of each layer - input a_in has number of rows = features so no need to transpose matrix
     z = np.matmul(a_in, W) + b
     return sigmoid(z)
 
