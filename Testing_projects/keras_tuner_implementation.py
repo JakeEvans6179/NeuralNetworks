@@ -29,16 +29,15 @@ x_train, x_val, y_train, y_val = train_test_split(
 print(f"training examples: {len(x_train)}")
 print(f"test examples: {len(x_test)}")
 
-
-
-#run normalisation
-norm_layer = tf.keras.layers.Normalization(axis=-1)
-norm_layer.adapt(x_train) # Learn mean and variance
-x_normalized = norm_layer(x_train)
-
+#prepare normalisation layer for use in build function
+norm_layer = tf.keras.layers.Normalization(axis=(1, 2)) #this acts on 2D data
+#if putting it after flattening layer we use axis = -1
+norm_layer.adapt(x_train)   #learn mean and variance
+#^we insert the normalisation into the model pipeline so we can input raw 28x28 data and it be normalised automatically
+x_train_normalized = norm_layer(x_train)
+x_test_normalized = norm_layer(x_test)
 x_cv_normalized = norm_layer(x_val)
 
-x_test_normalized = norm_layer(x_test)
 
 print("Test data ready.")
 
@@ -46,25 +45,22 @@ print("Test data ready.")
 
 
 def build_model(hp):
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Flatten(input_shape=(28, 28)))
+    model = tf.keras.Sequential([
+        tf.keras.layers.Input(shape=(28, 28)),
 
-    # Let the Tuner pick the number of Neurons (between 64 and 256, in steps of 64)
-    hp_neurons = hp.Int('units', min_value=64, max_value=256, step=64)
-    model.add(tf.keras.layers.Dense(units=hp_neurons, activation='relu'))
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(hp.Int('units', min_value=64, max_value=256, step=64), activation='relu'),
+        tf.keras.layers.Dropout(hp.Float('dropout', min_value=0.1, max_value=0.5, step=0.1)),
+        tf.keras.layers.Dense(10, activation='linear')
 
-    # Let the Tuner pick the Dropout rate (between 0.1 and 0.5)
-    hp_dropout = hp.Float('dropout', min_value=0.1, max_value=0.5, step=0.1)
-    model.add(tf.keras.layers.Dropout(rate=hp_dropout))
-
-    model.add(tf.keras.layers.Dense(10, activation='linear'))
-
+    ])
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        optimizer=tf.keras.optimizers.Adam(0.001),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=['accuracy']
     )
     return model
+
 
 
 #set up early stopper --> stop when model cross validation accuracy doesn't improve after 3 epochs in a row
@@ -86,7 +82,7 @@ tuner = kt.RandomSearch(
 #start search
 print("Starting KerasTuner Search...")
 tuner.search(
-    x_normalized, y_train,
+    x_train_normalized, y_train,
     epochs=20,  #training rounds
     validation_data=(x_cv_normalized, y_val),
     callbacks=[early_stopper]
@@ -111,7 +107,7 @@ best_model.save('my_ultimate_fashion_model.keras')
 index = np.random.randint(0, len(x_test_normalized))
 
 input_image = x_test_normalized[index].numpy()  #used for the prediction (normalised) - convert back to numpy array so reshape can be used
-display_image = x_test[index]    #used for displaying image (not normalised)
+display_image = x_test_normalized[index]    #used for displaying image (not normalised)
 
 #Put the image into a "batch of 1" --> keras can only look at a batch of images
 input_batch = input_image.reshape(1, 28, 28)
@@ -132,7 +128,7 @@ probability = np.max(predictions_p)
 
 print(f"\nTrue Label:      {true_label}")
 print(f"Predicted Label: {predicted_label}")
-print(f"Confidence:      {probability:.4f}")
+print(f"Confidence:      {probability:.4f}q")
 
 # Plot
 plt.imshow(display_image, cmap='gray')
@@ -140,4 +136,3 @@ plt.title(f"True: {true_label}, Pred: {predicted_label}")
 plt.axis('off')
 plt.show()
 
-#now gap between training and test accuracy is decreasing, meaning memorisation has decreased and model generalises better

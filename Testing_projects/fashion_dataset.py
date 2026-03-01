@@ -17,7 +17,8 @@ xtrain_flat = x_train.reshape(-1, 784)
 xtest_flat = x_test.reshape(-1, 784)
 
 #run normalisation
-norm_layer = tf.keras.layers.Normalization(axis=-1)
+norm_layer = tf.keras.layers.Normalization(axis=-1) #normalises the last axis (since it is flattened this is the pixels) format <batch, pixels>
+#if it were 2D, this would be the height: format <batch, height, width>
 norm_layer.adapt(xtrain_flat) # Learn mean and variance
 x_normalized = norm_layer(xtrain_flat)
 
