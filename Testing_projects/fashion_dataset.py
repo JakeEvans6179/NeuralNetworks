@@ -30,6 +30,12 @@ model = Sequential([
     #input layer (2 features
     tf.keras.Input(shape=(784,)),
 
+    #Input layer now accepts the 2D image shape (28, 28)
+    #tf.keras.Input(shape=(28, 28)),
+
+    #This layer converts the (28, 28) image into a (784,) vector automatically
+    #tf.keras.layers.Flatten(),
+
     #hidden layer 1 - 25 neurons
     Dense(256, activation='relu', name='layer1'),
     Dropout(0.2),  # <--- NEW: Randomly turns off 20% of the 256 neurons each batch
@@ -54,6 +60,7 @@ model.fit(
     x_normalized,     # Training Inputs
     y_train,   # Training Labels
     epochs=25,
+    validation_split=0.2,  # <--- NEW: Automatically uses 20% of training data as a CV set
     batch_size=32,
     verbose=1
 )

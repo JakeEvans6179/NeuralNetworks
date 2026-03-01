@@ -58,7 +58,8 @@ model.compile(
     loss=SparseCategoricalCrossentropy(),
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
     metrics=['accuracy']    #tells it to calculate the accuracy metric as well for later
-) #SparseCategoricalCrossentropy is used for softmax, returns one category (in this case 0-9)
+) #SparseCategoricalCrossentropy is used for softmax, returns one category
+# (in this case 0-9, 10 neurons on output layer)
 
 #train model
 print("Starting training...")

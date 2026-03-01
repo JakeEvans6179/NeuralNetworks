@@ -13,7 +13,7 @@ print(f"Test examples:     {len(x_test)}")
 
 #Preprocessing for CNNs (keep 2D)
 #Instead of flattening to 784, we keep the 28x28 grid.
-x_train_cnn = x_train.reshape(-1, 28, 28, 1) #keep 2D, 1 at end tells CNN it is greyscale
+x_train_cnn = x_train.reshape(-1, 28, 28, 1) #keep 2D, 1 at end tells CNN it is greyscale image
 x_test_cnn = x_test.reshape(-1, 28, 28, 1)
 
 #normalise images
