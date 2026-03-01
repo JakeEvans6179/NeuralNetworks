@@ -33,7 +33,9 @@ print(f"test examples: {len(x_test)}")
 norm_layer = tf.keras.layers.Normalization(axis=(1, 2)) #this acts on 2D data
 #if putting it after flattening layer we use axis = -1
 norm_layer.adapt(x_train)   #learn mean and variance
-#^we insert the normalisation into the model pipeline so we can input raw 28x28 data and it be normalised automatically
+
+#normalise data
+
 x_train_normalized = norm_layer(x_train)
 x_test_normalized = norm_layer(x_test)
 x_cv_normalized = norm_layer(x_val)
@@ -113,7 +115,7 @@ display_image = x_test_normalized[index]    #used for displaying image (not norm
 input_batch = input_image.reshape(1, 28, 28)
 #predict
 predictions = best_model.predict(input_batch) #no need to flatten image as NN does it in pipeline
-# CHANGE 3: Convert Logits to Probabilities for human readability
+#Convert Logits to Probabilities for human readability
 predictions_p = tf.nn.softmax(predictions)
 
 
@@ -121,8 +123,8 @@ true_label = y_test[index]
 
 
 
-# predictions is a list of 10 probabilities, e.g., [0.01, 0.05, 0.90, ...]
-# We use argmax to find the INDEX of the highest probability
+#predictions is a list of 10 probabilities, e.g., [0.01, 0.05, 0.90, ...]
+#We use argmax to find the index of the highest probability
 predicted_label = np.argmax(predictions_p)
 probability = np.max(predictions_p)
 
