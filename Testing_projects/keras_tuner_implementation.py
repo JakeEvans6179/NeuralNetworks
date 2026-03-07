@@ -43,17 +43,63 @@ x_cv_normalized = norm_layer(x_val)
 
 print("Test data ready.")
 
+'''
 #build keras tuner function
+def build_model(hp):
+    # 1. Define the tuning variables FIRST
+    hp_units = hp.Int('units', min_value=64, max_value=256, step=64)
+    hp_dropout = hp.Float('dropout', min_value=0.1, max_value=0.5, step=0.1)
 
+    # Use hp.Choice for L2, since lambdas usually jump by multiples of 10
+    hp_l2 = hp.Choice('l2_rate', values=[0.0, 0.001, 0.01, 0.1])
 
+    # 2. Build the model using those variables
+    model = tf.keras.Sequential([
+        tf.keras.layers.Input(shape=(28, 28)),
+        tf.keras.layers.Flatten(),
+
+        # HIDDEN LAYER 1 (Uses the variables)
+        tf.keras.layers.Dense(
+            units=hp_units,
+            activation='relu',
+            kernel_regularizer=tf.keras.regularizers.l2(hp_l2)
+        ),
+        tf.keras.layers.Dropout(rate=hp_dropout),
+
+        # HIDDEN LAYER 2 (Reuses the EXACT same variables!)
+        tf.keras.layers.Dense(
+            units=hp_units,
+            activation='relu',
+            kernel_regularizer=tf.keras.regularizers.l2(hp_l2)
+        ),
+        tf.keras.layers.Dropout(rate=hp_dropout),
+
+        # OUTPUT LAYER (Also reusing the same L2 variable)
+        tf.keras.layers.Dense(
+            10,
+            activation='linear',
+            kernel_regularizer=tf.keras.regularizers.l2(hp_l2)
+        )
+    ])
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(0.001),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=['accuracy']
+    )
+
+    return model
+'''
+
+#build keras tuner function
 def build_model(hp):
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(28, 28)),
 
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(hp.Int('units', min_value=64, max_value=256, step=64), activation='relu'),
+        tf.keras.layers.Dense(hp.Int('units', min_value=64, max_value=256, step=64), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
         tf.keras.layers.Dropout(hp.Float('dropout', min_value=0.1, max_value=0.5, step=0.1)),
-        tf.keras.layers.Dense(10, activation='linear')
+        tf.keras.layers.Dense(10, activation='linear', kernel_regularizer=tf.keras.regularizers.l2(0.001))
 
     ])
     model.compile(
@@ -109,7 +155,7 @@ best_model.save('my_ultimate_fashion_model.keras')
 index = np.random.randint(0, len(x_test_normalized))
 
 input_image = x_test_normalized[index].numpy()  #used for the prediction (normalised) - convert back to numpy array so reshape can be used
-display_image = x_test_normalized[index]    #used for displaying image (not normalised)
+display_image = x_test[index]    #used for displaying image (not normalised)
 
 #Put the image into a "batch of 1" --> keras can only look at a batch of images
 input_batch = input_image.reshape(1, 28, 28)
@@ -130,11 +176,53 @@ probability = np.max(predictions_p)
 
 print(f"\nTrue Label:      {true_label}")
 print(f"Predicted Label: {predicted_label}")
-print(f"Confidence:      {probability:.4f}q")
+print(f"Confidence:      {probability:.4f}")
 
 # Plot
 plt.imshow(display_image, cmap='gray')
 plt.title(f"True: {true_label}, Pred: {predicted_label}")
 plt.axis('off')
 plt.show()
+
+#plotting learning curve
+#Get the settings of best model from the tuner
+best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+
+#Build a new model using the best settings
+#model starts with random weights
+final_model = tuner.hypermodel.build(best_hps)
+
+print("\n--- Starting Final Training for Learning Curve ---")
+
+#Train from scratch and capture the history
+#gives graph from 1st epoch to end
+history = final_model.fit(
+    x_train_normalized,
+    y_train,
+    epochs=30, #high limit, early stopper will terminate early
+    validation_data=(x_cv_normalized, y_val),
+    callbacks=[early_stopper],
+    verbose=1
+)
+
+#plot learning curve
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Train Acc')
+plt.plot(history.history['val_accuracy'], label='Val Acc')
+plt.title('Accuracy Curve')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Val Loss')
+plt.title('Error (Loss) Curve')
+plt.legend()
+plt.show()
+
+
+
+print("\nhyperparameters of best performing model:")
+print(f"Neurons (Units): {best_hps.get('units')}")
+print(f"Dropout Rate:    {best_hps.get('dropout'):.2f}")
 
